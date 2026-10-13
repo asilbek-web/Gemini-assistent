@@ -40,6 +40,26 @@ from assistant.store import ensure_private_dir
 
 log = logging.getLogger("bot")
 
+
+def _start_health_server(port: int) -> None:
+    """Serve /health on $PORT so PaaS routers (Render) see an open port."""
+    from aiohttp import web
+
+    async def health(_request: web.Request) -> web.Response:
+        return web.Response(text="ok")
+
+    app = web.Application()
+    app.router.add_get("/health", health)
+    runner = web.AppRunner(app)
+
+    async def _run() -> None:
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", port)
+        await site.start()
+        log.info("Health server listening on 0.0.0.0:%d", port)
+
+    asyncio.create_task(_run())
+
 ENV_PATH = Path(".env")
 
 
@@ -162,6 +182,10 @@ async def _run_bot(settings: Settings) -> int:
         log.warning("Bot starts paused; send /resume to enable replies")
     if not read_profile(settings.profile_path):
         log.warning("profile.md is empty or missing; fill it in before going live")
+
+    port = os.environ.get("PORT")
+    if port and port.isdigit():
+        _start_health_server(int(port))
 
     try:
         await dp.start_polling(bot, allowed_updates=ALLOWED_UPDATES)
