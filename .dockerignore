@@ -1,0 +1,10 @@
+.env
+.venv/
+data/
+__pycache__/
+.pytest_cache/
+.git/
+.DS_Store
+*.bak
+prompts/
+gemini.key
